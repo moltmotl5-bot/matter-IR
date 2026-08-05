@@ -74,30 +74,32 @@ https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
 ## 開發階段
 
-### 階段一：訊號破解（你現在在這裡）
+### 階段一：訊號解碼（推薦）
+
+先安裝自訂函式庫：[docs/install-mitsubishi-srk8-library.md](docs/install-mitsubishi-srk8-library.md)
 
 ```
-firmware/phase1_ir_learn/phase1_ir_learn.ino
+firmware/phase1_decode/phase1_decode.ino     — 8-byte 自訂解碼（推薦）
+firmware/phase1_ir_learn/phase1_ir_learn.ino — 原始 IR dump（備用）
 ```
 
-1. 燒錄此韌體
-2. 開啟序列埠監控（115200）
-3. 拿三菱重工遙控器對準接收模組，按「電源」或「調溫」
-4. **記下 Protocol 名稱**（預期 `MitsubishiHeavy152` 或 `MitsubishiHeavy88`）
+1. 燒錄 `phase1_decode.ino`
+2. 按遙控器按鍵，確認輸出 `Validation: OK` 及 Power/Mode/Temp/Fan
+3. 協定說明見 [docs/mitsubishi-srk8-protocol.md](docs/mitsubishi-srk8-protocol.md)
 
-> **若顯示 `UNKNOWN`（SRK53MMH1 常見）**：接收正常。見 [docs/mitsubishi-heavy-unknown.md](docs/mitsubishi-heavy-unknown.md)。複製 Serial 的 **Raw send array** 做 raw 重播，或先試階段二函式庫發射。
+> **若顯示 `UNKNOWN`（SRK53MMH1 正常）**：用 `phase1_decode` 直接解碼，不需 raw 重播。
 
-### 階段二：紅外線發射測試
+### 階段二：紅外線發射
 
 ```
-firmware/phase2_ir_transmit/phase2_ir_transmit.ino          — 函式庫自動發射（先試這個）
-firmware/phase2_ir_transmit_interactive/                    — 序列埠互動控制
-firmware/phase2_raw_replay/                                 — Raw 重播（UNKNOWN 時用）
+firmware/phase2_srk_control/phase2_srk_control.ino          — 自訂編碼發射（推薦）
+firmware/phase2_ir_transmit/phase2_ir_transmit.ino          — IRremoteESP8266 152-bit（備用）
+firmware/phase2_ir_transmit_interactive/
+firmware/phase2_raw_replay/                                 — Raw 重播（備用）
 ```
 
-1. 將發射模組對準冷氣（約 3 公尺）
-2. 若冷氣有反應，階段二完成
-3. 若 Phase 1 顯示 `MitsubishiHeavy88`，修改 `.ino` 中的 AC 類別
+1. 燒錄 `phase2_srk_control.ino`，Serial 輸入 `on`、`temp 24`、`off`
+2. 發射模組 VCC 接 5V，對準冷氣測試
 
 ### 階段三：Matter 溫控器整合（待開發）
 
