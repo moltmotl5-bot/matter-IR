@@ -21,11 +21,7 @@ IRMitsubishiHeavy152Ac ac(kIrSendPin);
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
-#if defined(ARDUINO_ESP32S3_DEV) || defined(CONFIG_IDF_TARGET_ESP32S3)
-  while (!Serial && millis() < 3000) {
-    delay(10);
-  }
-#endif
+  delay(2000);
 
   Serial.println();
   Serial.println("=== Phase 2: IR Transmit Test ===");

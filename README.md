@@ -85,11 +85,14 @@ firmware/phase1_ir_learn/phase1_ir_learn.ino
 3. 拿三菱重工遙控器對準接收模組，按「電源」或「調溫」
 4. **記下 Protocol 名稱**（預期 `MitsubishiHeavy152` 或 `MitsubishiHeavy88`）
 
+> **若顯示 `UNKNOWN`（SRK53MMH1 常見）**：接收正常。見 [docs/mitsubishi-heavy-unknown.md](docs/mitsubishi-heavy-unknown.md)。複製 Serial 的 **Raw send array** 做 raw 重播，或先試階段二函式庫發射。
+
 ### 階段二：紅外線發射測試
 
 ```
-firmware/phase2_ir_transmit/phase2_ir_transmit.ino          — 自動每 10 秒發射
+firmware/phase2_ir_transmit/phase2_ir_transmit.ino          — 函式庫自動發射（先試這個）
 firmware/phase2_ir_transmit_interactive/                    — 序列埠互動控制
+firmware/phase2_raw_replay/                                 — Raw 重播（UNKNOWN 時用）
 ```
 
 1. 將發射模組對準冷氣（約 3 公尺）
@@ -117,8 +120,9 @@ matter-IR/
 └── firmware/
     ├── config.h                          — 共用腳位設定
     ├── phase1_ir_learn/                  — 階段一：訊號學習
-    ├── phase2_ir_transmit/               — 階段二：自動發射測試
-    └── phase2_ir_transmit_interactive/   — 階段二：互動發射測試
+    ├── phase2_ir_transmit/               — 階段二：函式庫發射
+    ├── phase2_ir_transmit_interactive/   — 階段二：互動發射
+    └── phase2_raw_replay/                — 階段二：Raw 重播（UNKNOWN 時）
 ```
 
 ## 常見問題
