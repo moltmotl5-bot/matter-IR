@@ -121,10 +121,13 @@ matter-IR/
 │   └── wiring.md
 └── firmware/
     ├── config.h                          — 共用腳位設定
-    ├── phase1_ir_learn/                  — 階段一：訊號學習
-    ├── phase2_ir_transmit/               — 階段二：函式庫發射
-    ├── phase2_ir_transmit_interactive/   — 階段二：互動發射
-    └── phase2_raw_replay/                — 階段二：Raw 重播（UNKNOWN 時）
+    ├── libraries/MitsubishiSRK8/         — 8-byte 解碼/編碼函式庫
+    ├── phase1_decode/                    — 階段一：自訂解碼（推薦）
+    ├── phase1_ir_learn/                  — 階段一：原始 dump
+    ├── phase2_srk_control/               — 階段二：自訂編碼發射（推薦）
+    ├── phase2_ir_transmit/
+    ├── phase2_ir_transmit_interactive/
+    └── phase2_raw_replay/
 ```
 
 ## 常見問題
