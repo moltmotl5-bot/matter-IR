@@ -23,23 +23,30 @@ decode_results results;
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
-#if defined(ARDUINO_ESP32S3_DEV) || defined(CONFIG_IDF_TARGET_ESP32S3)
-  while (!Serial && millis() < 3000) {
-    delay(10);
-  }
-#endif
+  delay(2000);  // allow Mac USB to enumerate before first print
 
   Serial.println();
   Serial.println("=== Phase 1: IR Signal Learning ===");
   Serial.printf("Receiver pin: GPIO %d\n", kRecvPin);
+#if ARDUINO_USB_CDC_ON_BOOT
+  Serial.println("Serial: USB CDC (connect to native USB port)");
+#else
+  Serial.println("Serial: UART/CH343 (connect to COM/UART port)");
+#endif
   Serial.println("Point Mitsubishi Heavy remote at receiver, press buttons.");
-  Serial.println("Look for Protocol name in output below.");
+  Serial.println("Heartbeat prints every 5s if no IR signal yet.");
   Serial.println();
 
   irrecv.enableIRIn();
 }
 
 void loop() {
+  static uint32_t lastHeartbeat = 0;
+  if (millis() - lastHeartbeat >= 5000) {
+    lastHeartbeat = millis();
+    Serial.printf("[heartbeat %lu ms] waiting for IR...\n", millis());
+  }
+
   if (irrecv.decode(&results)) {
     Serial.println();
     Serial.println("--- IR Signal Captured ---");
