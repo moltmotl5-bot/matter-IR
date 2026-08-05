@@ -3,32 +3,96 @@
 #include <Arduino.h>
 #include <string.h>
 
+namespace {
+
+constexpr uint32_t kSpaceThresholdUs = 2400;  // between ZERO (1496) and ONE (3454)
+
+uint32_t rawToUs(volatile uint16_t const* rawbuf, int idx, uint16_t tick_us) {
+  return static_cast<uint32_t>(rawbuf[idx]) * tick_us;
+}
+
+bool matchHeader(volatile uint16_t const* rawbuf, uint16_t rawlen, int mark_idx,
+                 uint16_t tick_us) {
+  if (mark_idx < 0 || mark_idx + 1 >= static_cast<int>(rawlen)) {
+    return false;
+  }
+  const uint32_t mark_us = rawToUs(rawbuf, mark_idx, tick_us);
+  const uint32_t space_us = rawToUs(rawbuf, mark_idx + 1, tick_us);
+  return (mark_us >= 4500 && mark_us <= 7500) &&
+         (space_us >= 6000 && space_us <= 9000);
+}
+
+bool extractFrame(volatile uint16_t const* rawbuf, uint16_t rawlen, int hdr_idx,
+                  uint16_t tick_us, uint8_t frame_out[8]) {
+  const int bit_start = hdr_idx + 2;  // after header mark + space
+
+  memset(frame_out, 0, 8);
+  for (int bit_idx = 0; bit_idx < 64; bit_idx++) {
+    const int space_idx = bit_start + bit_idx * 2 + 1;
+    if (space_idx >= static_cast<int>(rawlen)) {
+      return false;
+    }
+    const uint32_t space_us = rawToUs(rawbuf, space_idx, tick_us);
+    if (space_us >= kSpaceThresholdUs) {
+      const int byte_idx = bit_idx / 8;
+      const int bit_pos = bit_idx % 8;  // LSB first
+      frame_out[byte_idx] |= static_cast<uint8_t>(1U << bit_pos);
+    }
+  }
+  return true;
+}
+
+}  // namespace
+
 bool MitsubishiSRK8::decodeRawBuffer(volatile uint16_t const* rawbuf,
                                      uint16_t rawlen, uint8_t frame_out[8],
                                      uint16_t tick_us) {
-  if (rawbuf == nullptr || frame_out == nullptr || rawlen < 131) {
+  if (rawbuf == nullptr || frame_out == nullptr || rawlen < 50) {
     return false;
   }
 
-  // Space-length encoding: read odd-index spaces after header (indices 4+).
-  // Threshold ~2500 µs between ZERO_SPACE (1496) and ONE_SPACE (3454).
-  const uint16_t one_threshold = 2500 / tick_us;
-
   memset(frame_out, 0, 8);
-  for (int b = 0; b < 8; b++) {
-    for (int bit = 0; bit < 8; bit++) {
-      const int space_idx = 4 + (b * 8 + bit) * 2;
-      if (space_idx >= rawlen) {
-        return false;
+
+  // Try microsecond-native (1), caller tick, and classic 2 µs ticks.
+  const uint16_t tick_candidates[] = {1, tick_us, 2};
+
+  for (uint8_t t = 0; t < 3; t++) {
+    const uint16_t tick = tick_candidates[t];
+    if (tick == 0) {
+      continue;
+    }
+
+    // Scan entire buffer — handles leading gap and multi-frame captures.
+    for (int hdr_idx = 0; hdr_idx + 1 < static_cast<int>(rawlen); hdr_idx++) {
+      if (!matchHeader(rawbuf, rawlen, hdr_idx, tick)) {
+        continue;
       }
-      const uint16_t space = rawbuf[space_idx];
-      if (space > one_threshold) {
-        frame_out[b] |= static_cast<uint8_t>(1U << bit);
+
+      uint8_t frame[8];
+      if (!extractFrame(rawbuf, rawlen, hdr_idx, tick, frame)) {
+        continue;
+      }
+      if (validateFrame(frame)) {
+        memcpy(frame_out, frame, 8);
+        return true;
       }
     }
   }
 
-  return validateFrame(frame_out);
+  // Fallback: return best-effort frame from first detected header (for debug).
+  for (uint16_t tick : tick_candidates) {
+    if (tick == 0) {
+      continue;
+    }
+    for (int hdr_idx = 0; hdr_idx + 1 < static_cast<int>(rawlen); hdr_idx++) {
+      if (matchHeader(rawbuf, rawlen, hdr_idx, tick)) {
+        extractFrame(rawbuf, rawlen, hdr_idx, tick, frame_out);
+        return false;
+      }
+    }
+  }
+
+  return false;
 }
 
 bool MitsubishiSRK8::validateFrame(const uint8_t frame[8]) {
@@ -37,6 +101,23 @@ bool MitsubishiSRK8::validateFrame(const uint8_t frame[8]) {
   const bool fan_chk = (frame[3] == static_cast<uint8_t>(0xFF - frame[2]));
   const bool mode_chk = (frame[5] == static_cast<uint8_t>(0xFF - frame[4]));
   return header_ok && tail_ok && fan_chk && mode_chk;
+}
+
+void MitsubishiSRK8::printRawPreview(volatile uint16_t const* rawbuf,
+                                     uint16_t rawlen, uint16_t tick_us,
+                                     uint8_t count) {
+  if (rawbuf == nullptr) {
+    return;
+  }
+
+  Serial.printf("Raw preview (tick=%u, len=%u):\n", tick_us, rawlen);
+  if (count > rawlen) {
+    count = static_cast<uint8_t>(rawlen);
+  }
+  for (uint8_t i = 0; i < count; i++) {
+    Serial.printf("  [%u] raw=%u  us~%lu\n", i, rawbuf[i],
+                    rawToUs(rawbuf, i, tick_us));
+  }
 }
 
 bool MitsubishiSRK8::parseFrame(const uint8_t frame[8], MitsubishiSRKState* state) {

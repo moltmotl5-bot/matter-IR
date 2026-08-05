@@ -69,6 +69,10 @@ class MitsubishiSRK8 {
   static void printFrame(const uint8_t frame[8]);
   static void printState(const MitsubishiSRKState& state);
 
+  // Debug: dump first N rawbuf entries (shown when decode fails).
+  static void printRawPreview(volatile uint16_t const* rawbuf, uint16_t rawlen,
+                              uint16_t tick_us, uint8_t count = 24);
+
  private:
   static bool validateFrame(const uint8_t frame[8]);
   static MitsubishiSRKFan fanFromB2(uint8_t b2);

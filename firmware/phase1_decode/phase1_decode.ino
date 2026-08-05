@@ -47,7 +47,10 @@ void tryDecode() {
 
   if (!ok) {
     Serial.println("Validation: FAILED (header/trailer/checksum mismatch)");
-    Serial.println("Tip: press one button slowly; use single 130-bit frame");
+    Serial.println("Debug raw samples (if still all zeros, re-copy library v1.0.2):");
+    MitsubishiSRK8::printRawPreview(results.rawbuf, results.rawlen, 1, 20);
+    MitsubishiSRK8::printRawPreview(results.rawbuf, results.rawlen, kRawTick, 20);
+    Serial.println("Tip: press ONE button slowly; wait for output before next press");
     return;
   }
 
