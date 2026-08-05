@@ -1,10 +1,14 @@
 /*
- * Phase 1 — IR Signal Learning (IRrecvDumpV3)
+ * Phase 1 — IR Signal Learning (full raw dump)
  *
- * Connect ESP32-S3 to Mac via USB-C (COM/UART port).
- * Open Serial Monitor at 115200 baud.
- * Point your Mitsubishi Heavy remote at the IR receiver and press buttons.
- * Record the Protocol name (e.g. MitsubishiHeavy152) from serial output.
+ * Mitsubishi Heavy SRK53MMH1 often shows Protocol: UNKNOWN — this is NORMAL.
+ * The built-in decoder does not recognize this 8-byte variant.
+ *
+ * What to do:
+ *   1. Press each remote button once, slowly (wait for "--- End ---" before next)
+ *   2. Copy the "Raw send array" block for POWER ON and POWER OFF
+ *   3. Paste into firmware/phase2_raw_replay/phase2_raw_replay.ino
+ *   4. Also try phase2_ir_transmit (library) — may work on some units
  *
  * Library: IRremoteESP8266 by crankyoldgit
  */
@@ -15,26 +19,23 @@
 #include <IRutils.h>
 
 const uint16_t kRecvPin = PIN_IR_RECV;
-const uint16_t kCaptureBufferSize = 1024;
-const uint8_t kTimeout = 50;
+const uint16_t kCaptureBufferSize = 2048;  // large buffer for long AC frames
+const uint8_t kTimeout = 120;              // AC remotes send long bursts
 
 IRrecv irrecv(kRecvPin, kCaptureBufferSize, kTimeout, true);
 decode_results results;
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
-  delay(2000);  // allow Mac USB to enumerate before first print
+  delay(2000);
 
   Serial.println();
-  Serial.println("=== Phase 1: IR Signal Learning ===");
-  Serial.printf("Receiver pin: GPIO %d\n", kRecvPin);
-#if ARDUINO_USB_CDC_ON_BOOT
-  Serial.println("Serial: USB CDC (connect to native USB port)");
-#else
-  Serial.println("Serial: UART/CH343 (connect to COM/UART port)");
-#endif
-  Serial.println("Point Mitsubishi Heavy remote at receiver, press buttons.");
-  Serial.println("Heartbeat prints every 5s if no IR signal yet.");
+  Serial.println("=== Phase 1: IR Signal Learning (full dump) ===");
+  Serial.printf("Receiver pin: GPIO %d | Timeout: %u ms\n", kRecvPin, kTimeout);
+  Serial.println();
+  Serial.println("NOTE: Mitsubishi Heavy SRK series often shows UNKNOWN.");
+  Serial.println("      Copy the 'Raw send array' below for phase2_raw_replay.");
+  Serial.println("      Press ONE button, wait for output, then next button.");
   Serial.println();
 
   irrecv.enableIRIn();
@@ -42,28 +43,40 @@ void setup() {
 
 void loop() {
   static uint32_t lastHeartbeat = 0;
-  if (millis() - lastHeartbeat >= 5000) {
+  if (millis() - lastHeartbeat >= 8000) {
     lastHeartbeat = millis();
     Serial.printf("[heartbeat %lu ms] waiting for IR...\n", millis());
   }
 
-  if (irrecv.decode(&results)) {
-    Serial.println();
-    Serial.println("--- IR Signal Captured ---");
-    Serial.printf("Protocol: %s\n", typeToString(results.decode_type).c_str());
-    Serial.printf("Value:    0x%llX\n", results.value);
-    Serial.printf("Bits:     %u\n", results.bits);
-    Serial.printf("Raw len:  %u\n", results.rawlen);
-
-    if (results.decode_type != UNKNOWN) {
-      Serial.println();
-      Serial.println(">>> SAVE THIS PROTOCOL NAME for Phase 2 <<<");
-      Serial.printf(">>> Expected: MitsubishiHeavy152 or MitsubishiHeavy88 <<<\n");
-    }
-
-    Serial.println("--- End ---");
-    Serial.println();
-
-    irrecv.resume();
+  if (!irrecv.decode(&results)) {
+    return;
   }
+
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println(resultToHumanReadableBasic(&results).c_str());
+  Serial.println("----------------------------------------");
+  Serial.printf("Protocol : %s\n", typeToString(results.decode_type).c_str());
+  Serial.printf("Value    : 0x%llX\n", results.value);
+  Serial.printf("Bits     : %u\n", results.bits);
+  Serial.printf("Raw len  : %u\n", results.rawlen);
+  if (results.overflow) {
+    Serial.println("WARNING  : Buffer overflow — increase kCaptureBufferSize");
+  }
+  Serial.println("----------------------------------------");
+
+  if (results.decode_type == UNKNOWN) {
+    Serial.println(">>> UNKNOWN is expected for SRK53MMH1 — use raw replay >>>");
+    Serial.println();
+    Serial.println("--- Raw send array (copy this for phase2_raw_replay) ---");
+    Serial.println(resultToSourceCode(&results).c_str());
+    Serial.println("--- End raw array ---");
+  } else {
+    Serial.println(">>> Decoded! Protocol name saved for phase2_ir_transmit >>>");
+  }
+
+  Serial.println("========================================");
+  Serial.println();
+
+  irrecv.resume();
 }

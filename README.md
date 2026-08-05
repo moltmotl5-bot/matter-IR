@@ -51,7 +51,18 @@ https://espressif.github.io/arduino-esp32/package_esp32_index.json
 | Flash Size | 16MB (128Mb) |
 | PSRAM | OPI PSRAM |
 | Partition Scheme | 16M Flash (3MB APP/9.9MB FATFS) |
-| USB CDC On Boot | Enabled（方便 Mac 序列埠監控） |
+| USB CDC On Boot | Enabled **或** Disabled — 必须与所插 USB 孔配对，见下方说明 |
+
+> **Serial Monitor 没输出？** 先看 [docs/troubleshooting-serial-mac.md](docs/troubleshooting-serial-mac.md)，并先烧录 `firmware/serial_test/serial_test.ino` 诊断。
+
+**双 USB 孔配对规则（极重要）：**
+
+| 插入的孔 | USB CDC On Boot | Mac 上常见埠名 |
+|----------|-----------------|----------------|
+| **USB**（原生） | **Enabled** | `/dev/cu.usbmodem*` |
+| **COM / UART** | **Disabled** | `/dev/cu.wchusbserial*` |
+
+改此设定后必须 **重新上传** 韌体。上传与 Serial Monitor 必须使用 **同一个埠**。
 
 ### 3. 上傳韌體
 
@@ -112,6 +123,9 @@ matter-IR/
 
 ## 常見問題
 
+**Serial Monitor 完全沒有輸出（Mac）**
+→ 见 [docs/troubleshooting-serial-mac.md](docs/troubleshooting-serial-mac.md)。最常见：插错 USB 孔，或 USB CDC On Boot 与所插孔不匹配。先烧录 `firmware/serial_test/serial_test.ino` 测试。
+
 **Arduino IDE 找不到連接埠**
 → 安裝 CH343 驅動，確認用的是 COM/UART 埠而非純 USB 埠
 
@@ -120,6 +134,9 @@ matter-IR/
 
 **編譯錯誤：找不到 IRremoteESP8266**
 → 在程式庫管理員安裝 IRremoteESP8266（作者 crankyoldgit）
+
+**Phase 1 只有 heartbeat、没有 IR 输出**
+→ 序列埠正常。请用三菱重工遥控器对准接收模块（GPIO 4）按键
 
 **Phase 1 顯示 UNKNOWN**
 → 遙控器距離太遠或角度不對；確保接收模組 S 腳接 GPIO 4
