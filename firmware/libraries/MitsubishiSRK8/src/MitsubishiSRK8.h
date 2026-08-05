@@ -44,7 +44,8 @@ struct MitsubishiSRKTiming {
 class MitsubishiSRK8 {
  public:
   // Decode one 8-byte frame from IRrecv raw buffer (microseconds internally).
-  static bool decodeRawBuffer(const uint16_t* rawbuf, uint16_t rawlen,
+  // volatile: IRremoteESP8266 3.x exposes rawbuf as atomic/volatile
+  static bool decodeRawBuffer(volatile uint16_t const* rawbuf, uint16_t rawlen,
                               uint8_t frame_out[8],
                               uint16_t tick_us = 2);
 

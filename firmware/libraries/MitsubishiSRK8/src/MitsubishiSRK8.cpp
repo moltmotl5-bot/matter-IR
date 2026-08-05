@@ -3,8 +3,9 @@
 #include <Arduino.h>
 #include <string.h>
 
-bool MitsubishiSRK8::decodeRawBuffer(const uint16_t* rawbuf, uint16_t rawlen,
-                                     uint8_t frame_out[8], uint16_t tick_us) {
+bool MitsubishiSRK8::decodeRawBuffer(volatile uint16_t const* rawbuf,
+                                     uint16_t rawlen, uint8_t frame_out[8],
+                                     uint16_t tick_us) {
   if (rawbuf == nullptr || frame_out == nullptr || rawlen < 131) {
     return false;
   }
@@ -20,7 +21,8 @@ bool MitsubishiSRK8::decodeRawBuffer(const uint16_t* rawbuf, uint16_t rawlen,
       if (space_idx >= rawlen) {
         return false;
       }
-      if (rawbuf[space_idx] > one_threshold) {
+      const uint16_t space = rawbuf[space_idx];
+      if (space > one_threshold) {
         frame_out[b] |= static_cast<uint8_t>(1U << bit);
       }
     }
