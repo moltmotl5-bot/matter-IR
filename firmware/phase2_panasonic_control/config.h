@@ -6,6 +6,6 @@
 #define DEFAULT_PANASONIC_MODEL kPanasonicNke
 #define DEFAULT_USE_AC32 false  // false = PANASONIC_AC, true = PANASONIC_AC32
 
-#define DEFAULT_TX_BURSTS 3
+#define DEFAULT_TX_BURSTS 1
 #define DEFAULT_TX_BURST_GAP_MS 45
 #define DEFAULT_TX_REPEAT 1

@@ -12,7 +12,7 @@
  *   model unknown|lke|nke|dke|jke|ckp
  *   send | status | help
  *
- * If AC does not respond, run Phase 1 and try a different model command.
+ * Defaults: protocol ac, model nke (change in config.h if needed)
  */
 
 #include "config.h"
@@ -70,7 +70,7 @@ void setup() {
   delay(2000);
 
   ac.begin();
-  ac.setModel(kPanasonicNke);  // confirmed working for this unit
+  ac.setModel(DEFAULT_PANASONIC_MODEL);
   ac.on();
   ac.setMode(kPanasonicAcCool);
   ac.setTemp(24);
@@ -78,6 +78,7 @@ void setup() {
 
   Serial.println();
   Serial.println("=== Phase 2: Panasonic AC Control ===");
+  Serial.println("Defaults: protocol ac | model nke");
   Serial.printf("Transmitter: GPIO %d | bursts=%u (use 5V for max range)\n",
                 kIrSendPin, txBursts);
   printHelp();
