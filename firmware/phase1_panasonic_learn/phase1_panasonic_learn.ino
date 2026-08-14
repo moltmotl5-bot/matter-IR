@@ -1,8 +1,10 @@
 /*
  * Phase 1 — Panasonic AC IR Learning
  *
- * Point your Panasonic remote at the IR receiver and press buttons.
- * IRremoteESP8266 usually decodes as PANASONIC_AC or PANASONIC_AC32.
+ * If Serial Monitor is blank:
+ *   1. Upload firmware/serial_test/serial_test.ino first (USB/CDC pairing)
+ *   2. Match USB port + "USB CDC On Boot" — see docs/troubleshooting-serial-mac.md
+ *   3. Baud 115200, press EN/RST after upload, then open Serial Monitor
  *
  * Library: IRremoteESP8266 (crankyoldgit)
  */
@@ -14,16 +16,16 @@
 #include <ir_Panasonic.h>
 
 const uint16_t kRecvPin = PIN_IR_RECV;
-const uint16_t kCaptureBufferSize = 4096;  // Panasonic AC frames can be long
+const uint16_t kCaptureBufferSize = 2048;
 const uint8_t kTimeout = 150;
 
-IRrecv irrecv(kRecvPin, kCaptureBufferSize, kTimeout, true);
+IRrecv* irrecv = nullptr;
 decode_results results;
 
 void decodePanasonicAc(const decode_results& r) {
   IRPanasonicAc ac(PIN_IR_SEND);
   ac.setRaw(r.state);
-  ac.setModel(ac.getModel());  // auto-detect model from frame
+  ac.setModel(ac.getModel());
 
   Serial.println("--- Panasonic AC decode ---");
   Serial.println(ac.toString().c_str());
@@ -50,7 +52,6 @@ void dumpUnknown(const decode_results& r) {
   Serial.println("--- UNKNOWN — dump raw (paste if needed) ---");
   Serial.println(resultToHumanReadableBasic(&r).c_str());
   Serial.println(resultToSourceCode(&r).c_str());
-  Serial.println("Try Phase 2 anyway — some Panasonic units still respond.");
 }
 
 void setup() {
@@ -59,21 +60,41 @@ void setup() {
 
   Serial.println();
   Serial.println("=== Phase 1: Panasonic AC IR Learning ===");
+#if ARDUINO_USB_CDC_ON_BOOT
+  Serial.println("Serial: USB CDC ENABLED  -> use native USB port");
+#else
+  Serial.println("Serial: USB CDC DISABLED -> use COM/UART port");
+#endif
   Serial.printf("Receiver: GPIO %d | Timeout: %u ms\n", kRecvPin, kTimeout);
-  Serial.println("Press Panasonic remote buttons (power, temp, mode).");
-  Serial.println();
+  Serial.println("Waiting for IR... heartbeat every 3s.");
+  Serial.println("Press Panasonic remote: power, temp up/down.");
+  Serial.flush();
 
-  irrecv.enableIRIn();
+  irrecv = new IRrecv(kRecvPin, kCaptureBufferSize, kTimeout, true);
+  if (irrecv == nullptr) {
+    Serial.println("ERROR: IR receiver init failed (out of memory?)");
+    return;
+  }
+  irrecv->enableIRIn();
+  Serial.println("IR receiver ready.");
+  Serial.flush();
 }
 
 void loop() {
   static uint32_t lastHeartbeat = 0;
-  if (millis() - lastHeartbeat >= 8000) {
-    lastHeartbeat = millis();
-    Serial.printf("[heartbeat %lu ms] waiting...\n", millis());
+
+  if (irrecv == nullptr) {
+    delay(1000);
+    return;
   }
 
-  if (!irrecv.decode(&results)) {
+  if (millis() - lastHeartbeat >= 3000) {
+    lastHeartbeat = millis();
+    Serial.printf("[heartbeat %lu ms] waiting for remote...\n", millis());
+    Serial.flush();
+  }
+
+  if (!irrecv->decode(&results)) {
     return;
   }
 
@@ -95,12 +116,13 @@ void loop() {
       dumpUnknown(results);
       break;
     default:
-      Serial.println("(Other protocol — confirm this is a Panasonic remote)");
+      Serial.println("(Other protocol — confirm Panasonic remote)");
       Serial.println(resultToHumanReadableBasic(&results).c_str());
       break;
   }
 
   Serial.println("========================================");
   Serial.println();
-  irrecv.resume();
+  Serial.flush();
+  irrecv->resume();
 }
