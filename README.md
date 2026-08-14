@@ -48,10 +48,18 @@ firmware/phase2_panasonic_control/phase2_panasonic_control.ino
 
 Serial 命令：`on` · `off` · `temp 24` · `cool` · `model nke` · `help`
 
-### 階段三：Matter 溫控器（待開發）
+### 階段三：Matter + Apple Home
 
-- Matter Thermostat + AHT20 室溫
-- Apple Home 配對
+```
+firmware/phase3_matter_ac/phase3_matter_ac.ino
+```
+
+1. 复制 `secrets.h.example` → `secrets.h`，填入 WiFi
+2. Partition：**16M Flash (3MB APP/9.9MB FATFS)**
+3. Serial 显示 QR / Manual code → Apple Home 配对
+4. 详见 [docs/phase3-matter-setup.md](docs/phase3-matter-setup.md)
+
+适用：**Panasonic CW-HUxxxx**，IR 默认 `PANASONIC_AC` + **NKE**
 
 ## 專案結構
 
@@ -61,11 +69,13 @@ matter-IR/
 ├── docs/
 │   ├── wiring.md
 │   ├── panasonic-protocol.md
+│   ├── phase3-matter-setup.md
 │   └── troubleshooting-serial-mac.md
 └── firmware/
-    ├── serial_test/                 — Serial 埠診斷
-    ├── phase1_panasonic_learn/      — 階段一
-    └── phase2_panasonic_control/    — 階段二
+    ├── serial_test/
+    ├── phase1_panasonic_learn/
+    ├── phase2_panasonic_control/
+    └── phase3_matter_ac/              — Matter + IR
 ```
 
 ## 常見問題
