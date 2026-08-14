@@ -23,10 +23,10 @@
 const uint16_t kIrSendPin = PIN_IR_SEND;
 IRPanasonicAc ac(kIrSendPin);
 
-bool useAc32 = false;
-uint8_t txBursts = 3;       // send full frame N times (like real remote)
-uint16_t txBurstGapMs = 45; // gap between bursts
-uint16_t txRepeat = 1;      // IRremoteESP8266 internal repeat per burst
+bool useAc32 = DEFAULT_USE_AC32;
+uint8_t txBursts = DEFAULT_TX_BURSTS;
+uint16_t txBurstGapMs = DEFAULT_TX_BURST_GAP_MS;
+uint16_t txRepeat = DEFAULT_TX_REPEAT;
 
 void sendAc() {
   Serial.printf("[TX] Sending %u burst(s), repeat=%u...\n", txBursts, txRepeat);
@@ -70,7 +70,7 @@ void setup() {
   delay(2000);
 
   ac.begin();
-  ac.setModel(kPanasonicUnknown);
+  ac.setModel(kPanasonicNke);  // confirmed working for this unit
   ac.on();
   ac.setMode(kPanasonicAcCool);
   ac.setTemp(24);
