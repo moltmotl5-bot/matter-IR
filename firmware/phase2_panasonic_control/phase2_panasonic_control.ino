@@ -23,21 +23,32 @@
 const uint16_t kIrSendPin = PIN_IR_SEND;
 IRPanasonicAc ac(kIrSendPin);
 
-bool useAc32 = false;  // set true if Phase 1 showed PANASONIC_AC32
+bool useAc32 = false;
+uint8_t txBursts = 3;       // send full frame N times (like real remote)
+uint16_t txBurstGapMs = 45; // gap between bursts
+uint16_t txRepeat = 1;      // IRremoteESP8266 internal repeat per burst
 
 void sendAc() {
-  if (useAc32) {
-    IRPanasonicAc32 ac32(kIrSendPin);
-    ac32.begin();
-    ac32.setPowerToggle(ac.getPower());
-    ac32.setTemp(ac.getTemp());
-    ac32.setMode(ac.getMode());
-    ac32.setFan(ac.getFan());
-    ac32.send();
-  } else {
-    ac.send();
+  Serial.printf("[TX] Sending %u burst(s), repeat=%u...\n", txBursts, txRepeat);
+
+  for (uint8_t i = 0; i < txBursts; i++) {
+    if (useAc32) {
+      IRPanasonicAc32 ac32(kIrSendPin);
+      ac32.begin();
+      ac32.setPowerToggle(ac.getPower());
+      ac32.setTemp(ac.getTemp());
+      ac32.setMode(ac.getMode());
+      ac32.setFan(ac.getFan());
+      ac32.send(txRepeat);
+    } else {
+      ac.send(txRepeat);
+    }
+    if (i + 1 < txBursts) {
+      delay(txBurstGapMs);
+    }
   }
-  Serial.println("[TX] Sent");
+
+  Serial.println("[TX] Done");
   Serial.println(ac.toString().c_str());
 }
 
@@ -48,6 +59,7 @@ void printHelp() {
   Serial.println("  fan auto|low|medium|high|max");
   Serial.println("  quiet on|off | powerful on|off | ion on|off");
   Serial.println("  model unknown|lke|nke|dke|jke|ckp|rkr");
+  Serial.println("  repeat <1-5> | bursts <1-5>  (increase range/reliability)");
   Serial.println("  protocol ac|ac32   (match Phase 1 result)");
   Serial.println("  send | status | help");
   Serial.println();
@@ -66,7 +78,8 @@ void setup() {
 
   Serial.println();
   Serial.println("=== Phase 2: Panasonic AC Control ===");
-  Serial.printf("Transmitter: GPIO %d (use 5V)\n", kIrSendPin);
+  Serial.printf("Transmitter: GPIO %d | bursts=%u (use 5V for max range)\n",
+                kIrSendPin, txBursts);
   printHelp();
 }
 
@@ -157,6 +170,18 @@ void handleCommand(String cmd) {
   } else if (cmd == "model unknown") {
     ac.setModel(kPanasonicUnknown);
     Serial.println("Model: auto/unknown");
+  } else if (cmd.startsWith("repeat ")) {
+    int n = cmd.substring(7).toInt();
+    if (n >= 1 && n <= 5) {
+      txRepeat = static_cast<uint16_t>(n);
+      Serial.printf("TX repeat per burst: %u\n", txRepeat);
+    }
+  } else if (cmd.startsWith("bursts ")) {
+    int n = cmd.substring(7).toInt();
+    if (n >= 1 && n <= 5) {
+      txBursts = static_cast<uint8_t>(n);
+      Serial.printf("TX bursts per command: %u\n", txBursts);
+    }
   } else if (cmd == "protocol ac") {
     useAc32 = false;
     Serial.println("Using PANASONIC_AC (IRPanasonicAc)");

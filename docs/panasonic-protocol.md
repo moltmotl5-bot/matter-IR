@@ -58,6 +58,7 @@ on
 | `model lke` | LKE 系列 |
 | `model dke` | DKE 系列 |
 | `model jke` | JKE 系列 |
+| `model ckp` | CKP 系列（常配合 ac32） |
 | `model rkr` | RKR 系列 |
 
 ## 若仍是 UNKNOWN
